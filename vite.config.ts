@@ -5,8 +5,6 @@ import { resolve } from "path";
 // Chrome extension build: popup is a normal Vite app,
 // background + content are bundled as self-contained IIFE scripts.
 export default defineConfig(({ mode }) => {
-  const isExtensionScript = mode === "background" || mode === "content";
-
   if (mode === "background") {
     return {
       build: {
