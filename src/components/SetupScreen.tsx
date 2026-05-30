@@ -23,10 +23,10 @@ export function SetupScreen({ onSave }: SetupScreenProps) {
       return;
     }
 
-    if (!validateApiKeyFormat(trimmed)) {
-      setError("Invalid API key format. Gemini keys start with 'AIza'.");
-      return;
-    }
+    // if (!validateApiKeyFormat(trimmed)) {
+    //   setError("Invalid API key format. Gemini keys start with 'AIza'.");
+    //   return;
+    // }
 
     setTesting(true);
     try {
