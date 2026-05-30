@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { StorageData, UsageStats, CorrectionResult } from "../types";
-import { validateApiKeyFormat, maskApiKey } from "../utils/storage";
+import { validateApiKeyFormat, maskApiKey, saveAutoFix } from "../utils/storage";
 import { testApiKey } from "../services/gemini";
 import { truncateText } from "../utils/sanitize";
 
@@ -12,6 +12,7 @@ interface SettingsPageProps {
   onUpdateTheme: (theme: StorageData["theme"]) => Promise<void>;
   onClearHistory: () => Promise<void>;
   onClearAll: () => Promise<void>;
+  onRefresh: () => Promise<void>;
 }
 
 export function SettingsPage({
@@ -22,6 +23,7 @@ export function SettingsPage({
   onUpdateTheme,
   onClearHistory,
   onClearAll,
+  onRefresh,
 }: SettingsPageProps) {
   const [newKey, setNewKey] = useState("");
   const [showNewKey, setShowNewKey] = useState(false);
@@ -31,42 +33,27 @@ export function SettingsPage({
   const [testResult, setTestResult] = useState<"success" | "fail" | null>(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
 
-  const stats: UsageStats = data.usageStats ?? {
-    totalCorrections: 0,
-    totalCharacters: 0,
-  };
+  const stats: UsageStats = data.usageStats ?? { totalCorrections: 0, totalCharacters: 0 };
+  const autoFixOn = data.autoFix ?? false;
+  const autoFixDelay = data.autoFixDelay ?? 800;
 
   async function handleSaveKey(e: React.FormEvent) {
     e.preventDefault();
     setKeyError("");
     setKeySuccess("");
-
     const trimmed = newKey.trim();
-    if (!trimmed) {
-      setKeyError("Please enter an API key.");
-      return;
-    }
-    if (!validateApiKeyFormat(trimmed)) {
-      setKeyError("Invalid format. Gemini keys start with 'AIza'.");
-      return;
-    }
-
+    if (!trimmed) { setKeyError("Please enter an API key."); return; }
+    if (!validateApiKeyFormat(trimmed)) { setKeyError("Invalid format. Gemini keys start with 'AIza'."); return; }
     setTesting(true);
     try {
       const valid = await testApiKey(trimmed);
-      if (!valid) {
-        setKeyError("Key validation failed. Please check your key.");
-        return;
-      }
+      if (!valid) { setKeyError("Key validation failed. Please check your key."); return; }
       await onUpdateApiKey(trimmed);
       setNewKey("");
       setKeySuccess("API key updated successfully.");
       setTimeout(() => setKeySuccess(""), 3000);
-    } catch {
-      setKeyError("Could not validate key. Check your connection.");
-    } finally {
-      setTesting(false);
-    }
+    } catch { setKeyError("Could not validate key. Check your connection."); }
+    finally { setTesting(false); }
   }
 
   async function handleTestConnection() {
@@ -76,20 +63,25 @@ export function SettingsPage({
     try {
       const ok = await testApiKey(data.apiKey);
       setTestResult(ok ? "success" : "fail");
-    } catch {
-      setTestResult("fail");
-    } finally {
-      setTesting(false);
-    }
+    } catch { setTestResult("fail"); }
+    finally { setTesting(false); }
   }
 
   async function handleClearAll() {
-    if (!confirmClearAll) {
-      setConfirmClearAll(true);
-      return;
-    }
+    if (!confirmClearAll) { setConfirmClearAll(true); return; }
     await onClearAll();
     setConfirmClearAll(false);
+  }
+
+  async function handleAutoFixToggle() {
+    await saveAutoFix(!autoFixOn, autoFixDelay);
+    await onRefresh();
+  }
+
+  async function handleDelayChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = Number(e.target.value);
+    await saveAutoFix(autoFixOn, val);
+    await onRefresh();
   }
 
   return (
@@ -105,38 +97,70 @@ export function SettingsPage({
       </header>
 
       <div className="settings-body">
-        {/* API Key Section */}
+
+        {/* ── Auto-Fix Mode ── */}
+        <section className="settings-section">
+          <h2 className="settings-section-title">Auto-Fix Mode</h2>
+
+          <div className="autofix-card">
+            <div className="autofix-info">
+              <span className="autofix-label">Fix text automatically on selection</span>
+              <span className="autofix-desc">
+                Select any text on any page — it's sent to Gemini and replaced instantly.
+                Works in WhatsApp, Discord, Gmail, and everywhere else.
+              </span>
+            </div>
+            <button
+              className={`toggle-switch ${autoFixOn ? "toggle-switch--on" : ""}`}
+              onClick={handleAutoFixToggle}
+              role="switch"
+              aria-checked={autoFixOn}
+              aria-label="Toggle auto-fix"
+            >
+              <span className="toggle-thumb" />
+            </button>
+          </div>
+
+          {autoFixOn && (
+            <div className="delay-row">
+              <label className="field-label" htmlFor="fix-delay">
+                Delay before fixing: <strong>{autoFixDelay}ms</strong>
+              </label>
+              <input
+                id="fix-delay"
+                type="range"
+                min={300}
+                max={2000}
+                step={100}
+                value={autoFixDelay}
+                onChange={handleDelayChange}
+                className="delay-slider"
+              />
+              <div className="delay-hints">
+                <span>300ms (fast)</span>
+                <span>2000ms (slow)</span>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ── API Key ── */}
         <section className="settings-section">
           <h2 className="settings-section-title">Gemini API Key</h2>
-
           {data.apiKey && (
             <div className="key-display">
               <code className="key-masked">{maskApiKey(data.apiKey)}</code>
               <div className="key-actions">
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={handleTestConnection}
-                  disabled={testing}
-                >
+                <button className="btn btn-secondary btn-sm" onClick={handleTestConnection} disabled={testing}>
                   {testing ? <span className="spinner-sm" /> : null}
                   Test Connection
                 </button>
-                <button
-                  className="btn btn-danger btn-sm"
-                  onClick={onRemoveApiKey}
-                >
-                  Remove
-                </button>
+                <button className="btn btn-danger btn-sm" onClick={onRemoveApiKey}>Remove</button>
               </div>
-              {testResult === "success" && (
-                <p className="status-ok">✓ Connection successful</p>
-              )}
-              {testResult === "fail" && (
-                <p className="status-err">✗ Connection failed. Check your key.</p>
-              )}
+              {testResult === "success" && <p className="status-ok">✓ Connection successful</p>}
+              {testResult === "fail" && <p className="status-err">✗ Connection failed. Check your key.</p>}
             </div>
           )}
-
           <form onSubmit={handleSaveKey} className="key-form">
             <div className="input-wrap">
               <input
@@ -148,24 +172,11 @@ export function SettingsPage({
                 autoComplete="off"
                 spellCheck={false}
               />
-              <button
-                type="button"
-                className="toggle-visibility"
-                onClick={() => setShowNewKey((v) => !v)}
-                aria-label={showNewKey ? "Hide" : "Show"}
-              >
-                {showNewKey ? (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                    <line x1="1" y1="1" x2="23" y2="23"/>
-                  </svg>
-                ) : (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                )}
+              <button type="button" className="toggle-visibility" onClick={() => setShowNewKey(v => !v)} aria-label={showNewKey ? "Hide" : "Show"}>
+                {showNewKey
+                  ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                }
               </button>
             </div>
             {keyError && <p className="field-error">{keyError}</p>}
@@ -176,7 +187,7 @@ export function SettingsPage({
           </form>
         </section>
 
-        {/* Theme Section */}
+        {/* ── Appearance ── */}
         <section className="settings-section">
           <h2 className="settings-section-title">Appearance</h2>
           <div className="theme-options">
@@ -193,7 +204,7 @@ export function SettingsPage({
           </div>
         </section>
 
-        {/* Usage Stats */}
+        {/* ── Usage Stats ── */}
         <section className="settings-section">
           <h2 className="settings-section-title">Usage Statistics</h2>
           <div className="stats-grid">
@@ -203,31 +214,25 @@ export function SettingsPage({
             </div>
             <div className="stat-card">
               <span className="stat-value">
-                {stats.totalCharacters > 1000
-                  ? `${(stats.totalCharacters / 1000).toFixed(1)}k`
-                  : stats.totalCharacters}
+                {stats.totalCharacters > 1000 ? `${(stats.totalCharacters / 1000).toFixed(1)}k` : stats.totalCharacters}
               </span>
               <span className="stat-label">Characters</span>
             </div>
             <div className="stat-card">
               <span className="stat-value">
-                {stats.lastUsed
-                  ? new Date(stats.lastUsed).toLocaleDateString()
-                  : "—"}
+                {stats.lastUsed ? new Date(stats.lastUsed).toLocaleDateString() : "—"}
               </span>
               <span className="stat-label">Last Used</span>
             </div>
           </div>
         </section>
 
-        {/* Recent Corrections */}
+        {/* ── Recent Corrections ── */}
         {data.recentCorrections && data.recentCorrections.length > 0 && (
           <section className="settings-section">
             <div className="section-header-row">
               <h2 className="settings-section-title">Recent Corrections</h2>
-              <button className="btn btn-ghost btn-sm" onClick={onClearHistory}>
-                Clear
-              </button>
+              <button className="btn btn-ghost btn-sm" onClick={onClearHistory}>Clear</button>
             </div>
             <ul className="history-list">
               {data.recentCorrections.slice(0, 5).map((c: CorrectionResult, i: number) => (
@@ -241,24 +246,17 @@ export function SettingsPage({
           </section>
         )}
 
-        {/* Danger Zone */}
+        {/* ── Danger Zone ── */}
         <section className="settings-section settings-section--danger">
           <h2 className="settings-section-title">Data</h2>
-          <button
-            className={`btn btn-full ${confirmClearAll ? "btn-danger" : "btn-secondary"}`}
-            onClick={handleClearAll}
-          >
+          <button className={`btn btn-full ${confirmClearAll ? "btn-danger" : "btn-secondary"}`} onClick={handleClearAll}>
             {confirmClearAll ? "⚠️ Confirm: Clear All Data" : "Clear All Data & Settings"}
           </button>
           {confirmClearAll && (
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => setConfirmClearAll(false)}
-            >
-              Cancel
-            </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setConfirmClearAll(false)}>Cancel</button>
           )}
         </section>
+
       </div>
     </div>
   );

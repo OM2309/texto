@@ -522,3 +522,161 @@ body {
 .settings-section--danger {
   gap: 6px;
 }
+
+/* ─── Toggle Switch ──────────────────────────────────────────────────────────── */
+.toggle-switch {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  background: var(--bg-elevated);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.toggle-switch--sm {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+}
+
+.toggle-switch--on {
+  background: var(--accent);
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  display: block;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.toggle-switch--sm .toggle-thumb {
+  width: 14px;
+  height: 14px;
+}
+
+.toggle-switch--on .toggle-thumb {
+  transform: translateX(18px);
+}
+
+.toggle-switch--sm.toggle-switch--on .toggle-thumb {
+  transform: translateX(16px);
+}
+
+/* ─── Auto-Fix Banner ────────────────────────────────────────────────────────── */
+.autofix-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
+}
+
+.autofix-banner--on {
+  background: color-mix(in srgb, var(--bg) 85%, var(--accent) 15%);
+}
+
+.autofix-banner--off {
+  background: var(--bg-surface);
+  color: var(--text-muted);
+}
+
+.autofix-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.autofix-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+
+.autofix-banner--on .autofix-dot {
+  background: #a6e3a1;
+  box-shadow: 0 0 6px #a6e3a1;
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ─── Header Actions ─────────────────────────────────────────────────────────── */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ─── Auto-Fix Card (Settings) ───────────────────────────────────────────────── */
+.autofix-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.autofix-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.autofix-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.autofix-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ─── Delay Slider ───────────────────────────────────────────────────────────── */
+.delay-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.delay-slider {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.delay-hints {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+}
