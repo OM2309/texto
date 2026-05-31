@@ -1,7 +1,3 @@
-// Simple icon generator using canvas (Node.js with canvas package)
-// Run: node scripts/generate-icons.js
-// Falls back to creating placeholder PNGs if canvas is unavailable
-
 import { createCanvas } from "canvas";
 import { writeFileSync } from "fs";
 import { join, dirname } from "path";
